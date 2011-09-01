@@ -1,4 +1,7 @@
 REBAR=./rebar
+DATA=data
+EX=../example
+
 
 all: compile
 
@@ -13,3 +16,8 @@ test:
 
 test_file:
 	erl -pa ebin -noshell -run hashtrie_test test_file -run erlang halt
+
+plots:
+	(cd $(DATA) && eplot -margin 40 -x_label "#elements" -y_label "microseconds" -o $(EX)/data_get.png dict_fetch.dat gb_trees_get.dat ht_get.dat)
+	(cd $(DATA) && eplot -margin 40 -x_label "#elements" -y_label "microseconds" -o $(EX)/data_put.png dict_store.dat gb_trees_insert.dat ht_put.dat)
+	(cd $(DATA) && eplot -margin 40 -x_label "#elements" -y_label "microseconds" -o $(EX)/data_update.png dict_update.dat gb_trees_update.dat ht_update.dat)

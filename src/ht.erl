@@ -9,6 +9,7 @@
 -export([
 	put/3,
 	get/2,
+	update/3,
 	update/4,
 	fullness/1,
 	new/0
@@ -42,9 +43,10 @@
 
 new() -> ?node.
 
-put(K,V,H)        -> do_put(K,V,H,erlang:phash2(K)).
-get(K,H)          -> do_get(K,H,erlang:phash2(K)).
-update(K,F,I,H)   -> do_update(K,F,I,H,erlang:phash2(K)).
+put(K,V,H)      -> do_put(K,V,H,erlang:phash2(K)).
+get(K,H)        -> do_get(K,H,erlang:phash2(K)).
+update(K,F,I,H) -> do_update(K,F,I,H,erlang:phash2(K)).
+update(K,F,H)   -> do_update(K,F,H,erlang:phash2(K)).
 
 do_put(K,V,H,Hx) ->
     Ix = ?mask(Hx),
@@ -65,6 +67,15 @@ do_get(K,H,Hx) ->
 	_ ->
 	    undefined
     end.
+
+do_update(K,F,H,Hx) ->
+    Ix = ?mask(Hx),
+    case element(Ix, H) of
+	[K|V]   -> setelement(Ix, H, [K|F(V)]);
+	{K,V,T} -> setelement(Ix, H, {K,F(V),T});
+	E       -> setelement(Ix, H, setelement(3, E, do_update(K,F,element(3,E),?shift(Hx))))
+    end.
+
 
 do_update(K,F,I,H,Hx) ->
     Ix = ?mask(Hx),
