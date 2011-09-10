@@ -16,10 +16,32 @@
 
 %% defines
 
+-define(node_size_32, 1).
+
+-ifdef(node_size_8).
 -define(bitmap_is_full(Bm), Bm =:= 16#FF).
 -define(level_shift, 3).
 -define(index_mask(Hx), Hx band 7).
+-endif.
 
+-ifdef(node_size_16).
+-define(bitmap_is_full(Bm), Bm =:= 16#FFFF).
+-define(level_shift,4).
+-define(index_mask(Hx), Hx band 15).
+-endif.
+
+-ifdef(node_size_32).
+-define(bitmap_is_full(Bm), Bm =:= 16#FFFFFF).
+-define(level_shift,5).
+-define(index_mask(Hx), Hx band 31).
+-endif.
+
+
+%-define(ielement(Ix, T, V), insert_element(Ix, T, V)).
+-define(ielement(Ix, T, V), erlang:insert_element(Ix, T, V)).
+%-define(bitpop(Ix,Bm,C), bitcount(Ix,Bm,C)).
+-define(bitpop(Ix,Bm,_), erlang:bitcount( (Ix) band (Bm))).
+			    
 %% #full{}  = full node
 %% #index{} = index node
 %% [K|V]    = leaf node
@@ -43,7 +65,7 @@ get(K, T) ->
 put(Hx, Lvl, K,V, #index{ bitmask = Bm, array = A} = Ni) ->
     Ix   = ?index_mask(Hx),
     Bp   = 1 bsl Ix,   % bit position
-    Slot = bitcount(Bm, Bp - 1, Ix) + 1,
+    Slot = ?bitpop(Bm, Bp - 1, Ix) + 1,
 
     if 
 	Bm band Bp > 0 ->
@@ -63,17 +85,13 @@ put(Hx, Lvl, K,V, #index{ bitmask = Bm, array = A} = Ni) ->
 	true ->
 	    % array[Ix] *not* occupied, set it
 	    Bm1 = Bm bor Bp,
-	    A1 = insert_element(Slot, A, [K|V]),
+	    A1 = ?ielement(Slot, A, [K|V]),
 	    if ?bitmap_is_full(Bm1) ->
 		    #full { array = A1 };
 		true ->
 		    #index{ bitmask = Bm1, array = A1 }
 	    end
     end;
-%put(_, _, K, V, [K|_]) -> [K|V];
-%put(Hx, Lvl, K, V, [K0|V0]) ->
-%    N = put(Hx, Lvl, K, V, new()),
-%    put(erlang:phash2(K0) bsr Lvl, Lvl, K0, V0, N);
 put(Hx, Lvl, K,V, #full{ array = A} = N) ->
     Ix = ?index_mask(Hx) + 1,
     Next = case element(Ix, A) of
@@ -90,7 +108,7 @@ get(Hx, K,#index{ bitmask = Bm, array = A}) ->
     Ix = ?index_mask(Hx),
     Bp = 1 bsl Ix,
     if Bm band Bp > 0 ->
-	    Slot = bitcount(Bm, Bp - 1, Ix) + 1,
+	    Slot = ?bitpop(Bm, Bp - 1, Ix) + 1,
 	    get(Hx bsr ?level_shift, K, element(Slot, A));
 	true -> undefined
     end;
@@ -99,7 +117,6 @@ get(Hx, K, #full{ array = A }) ->
     get(Hx bsr ?level_shift, K, element(Ix, A));
 get(_, K, [K|V]) -> V;
 get(_, _, [_|_]) -> undefined.
-
 
 % should be bifs
 
