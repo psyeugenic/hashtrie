@@ -48,8 +48,17 @@ put(Hx, Lvl, K,V, #index{ bitmask = Bm, array = A} = Ni) ->
     if 
 	Bm band Bp > 0 ->
 	    % array[Ix] occupied, traverse down
+	    Next = case element(Slot, A) of
+		[K|_]   -> [K|V];
+		[K0|V0] ->
+		    Ns = put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, new()),
+		    put(erlang:phash2(K0) bsr (Lvl + ?level_shift), Lvl + ?level_shift, K0, V0, Ns);
+		Node ->
+		    put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, Node)
+	    end,
+
 	    Ni#index{ 
-		array = setelement(Slot, A, put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, element(Slot, A)))
+		array = setelement(Slot, A, Next)
 	    };
 	true ->
 	    % array[Ix] *not* occupied, set it
@@ -61,15 +70,21 @@ put(Hx, Lvl, K,V, #index{ bitmask = Bm, array = A} = Ni) ->
 		    #index{ bitmask = Bm1, array = A1 }
 	    end
     end;
-put(_, _, K, V, [K|_]) -> 
-    [K|V];
-put(Hx, Lvl, K, V, [K0|V0]) ->
-    N = put(Hx, Lvl, K, V, new()),
-    put(erlang:phash2(K0) bsr Lvl, Lvl, K0, V0, N);
+%put(_, _, K, V, [K|_]) -> [K|V];
+%put(Hx, Lvl, K, V, [K0|V0]) ->
+%    N = put(Hx, Lvl, K, V, new()),
+%    put(erlang:phash2(K0) bsr Lvl, Lvl, K0, V0, N);
 put(Hx, Lvl, K,V, #full{ array = A} = N) ->
     Ix = ?index_mask(Hx) + 1,
-    A1 = setelement(Ix, A, put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, element(Ix, A))),
-    N#full{ array = A1 }.
+    Next = case element(Ix, A) of
+	[K|_]   -> [K|V];
+	[K0|V0] ->
+	    Ns = put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, new()),
+	    put(erlang:phash2(K0) bsr (Lvl + ?level_shift), Lvl + ?level_shift, K0, V0, Ns);
+	Node ->
+	    put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, Node)
+    end,
+    N#full{ array = setelement(Ix, A, Next) }.
 
 get(Hx, K,#index{ bitmask = Bm, array = A}) ->
     Ix = ?index_mask(Hx),
