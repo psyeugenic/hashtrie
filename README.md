@@ -1,6 +1,11 @@
 Hashtries
 =========
 
+**pht** is a simple hamt with bitcount tricks.
+Should be used with [erlang/otp branch](https://github.com/psyeugenic/otp/commits/egil/pht-features)
+Smaller memory footprint than **ht** but could be better. (We don't need the extraword in records)
+Will probably rework this as an built-in-datastructure.
+
 **ht** is a hashtrie with good insert properties and descent lookup properties.
 It has similar properties to dict in lookup, but faster inserts. 
 
