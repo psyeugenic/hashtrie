@@ -65,6 +65,19 @@ ht_update(0, T) -> T;
 ht_update(N, T) -> 
     ht_update(N - 1, ht:update(?key(N), fun(V) -> [V,V] end, T)).
 
+pht_put(N) -> pht_put(N, pht:new()).
+pht_put(0, T) -> T;
+pht_put(N, T) -> pht_put(N - 1, pht:put(?key(N), ?value(N), T)).
+
+pht_get(0, _T) -> ok;
+pht_get(N, T) -> 
+    ?value(N) = pht:get(?key(N), T),
+    pht_get(N - 1, T).
+
+pht_update(0, T) -> T;
+pht_update(N, T) -> 
+    V = pht:get(N, T),
+    pht_update(N - 1, pht:put(?key(N), [V,V], T)).
 
 array_put(N)    -> array_put(N, array:new()).
 array_put(0, T) -> T;
@@ -82,7 +95,6 @@ tarray_put(N, T) -> tarray_put(N - 1, tarray:set(?key(N), ?value(N), T)).
 tarray_get(0, T) -> T;
 tarray_get(N, T) ->
     % io:format("ta get ~w -> ~w expecting ~w~n", [?key(N), tarray:get(?key(N), T), ?value(N)]), 
-
     ?value(N) = tarray:get(?key(N), T),
     tarray_get(N - 1, T).
 
@@ -162,6 +174,14 @@ go(N) when is_integer(N) ->
     sout(N, "get", Hp, Hp),
     {Hu, _} = timeit(fun() -> hashtrie_test:ht_update(N,Th) end),
     sout(N, "update", Hu, Hu),
+
+    {Pi, Tp} = timeit(fun() -> hashtrie_test:pht_put(N) end),
+    sout(N, "pht", "put", Pi, Hi),
+    {Pp, ok} = timeit(fun() -> hashtrie_test:pht_get(N,Tp) end),
+    sout(N, "get", Pp, Hp),
+    {Pu, _} = timeit(fun() -> hashtrie_test:pht_update(N,Tp) end),
+    sout(N, "update", Pu, Hu),
+
 
     {Gi, Tg} = timeit(fun() -> hashtrie_test:gb_trees_put(N) end),
     sout(N, "gb_trees", "insert", Gi, Hi),

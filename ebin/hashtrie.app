@@ -3,6 +3,7 @@
 	{vsn, "1.0"},
 	{modules, [
 		ht,
+		pht,
 		tarray,
 		hashtrie_test
 	    ]
