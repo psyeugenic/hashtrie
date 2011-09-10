@@ -20,11 +20,17 @@
 -define(level_shift, 3).
 -define(index_mask(Hx), Hx band 7).
 
-
 %% #full{}  = full node
 %% #index{} = index node
 %% [K|V]    = leaf node
 
+go(N) ->
+    lists:foldl(fun(I, O) ->
+		O1 = pht:put(I, I, O),
+		[io:format("get ~w -> ~w~n", [Ix, pht:get(Ix, O1)]) || Ix <- lists:seq(1, I)],
+		O1
+	end, pht:new(), lists:seq(1,N)),
+    ok.
 
 new() -> #index{ bitmask = 0, array = {} }.
 
@@ -52,14 +58,14 @@ put(Hx, Lvl, K,V, #index{ bitmask = Bm, array = A} = Ni) ->
 	    if ?bitmap_is_full(Bm1) ->
 		    #full { array = A1 };
 		true ->
-		    #index{ bitmask = Bm bor Bp, array = A1 }
+		    #index{ bitmask = Bm1, array = A1 }
 	    end
     end;
 put(_, _, K, V, [K|_]) -> 
     [K|V];
 put(Hx, Lvl, K, V, [K0|V0]) ->
-    N = put(erlang:phash2(K0) bsr (Lvl + ?level_shift), Lvl + ?level_shift, K0, V0, new()),
-    put(Hx, Lvl, K, V, N);
+    N = put(Hx, Lvl, K, V, new()),
+    put(erlang:phash2(K0) bsr Lvl, Lvl, K0, V0, N);
 put(Hx, Lvl, K,V, #full{ array = A} = N) ->
     Ix = ?index_mask(Hx) + 1,
     A1 = setelement(Ix, A, put(Hx bsr ?level_shift, Lvl + ?level_shift, K, V, element(Ix, A))),
@@ -75,7 +81,7 @@ get(Hx, K,#index{ bitmask = Bm, array = A}) ->
     end;
 get(Hx, K, #full{ array = A }) ->
     Ix = ?index_mask(Hx) + 1,
-    get(Hx, K, element(Ix, A));
+    get(Hx bsr ?level_shift, K, element(Ix, A));
 get(_, K, [K|V]) -> V;
 get(_, _, [_|_]) -> undefined.
 
