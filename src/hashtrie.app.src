@@ -1,0 +1,17 @@
+{application, hashtrie, [
+	{description, "Hashed dictionaries"},
+	{vsn, git},
+	{modules, [
+		hamt,
+		htrie,
+		tarray,
+		hashtrie_test
+	    ]},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib
+	    ]}
+    ]}.
+
+%% vim: ft=erlang

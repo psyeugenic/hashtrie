@@ -1,18 +1,30 @@
 %% Copyright (C) 2011 Björn-Egil Dahlberg
 %%
-%% File:    pht.erl
+%% File:    hamt.erl
 %% Author:  Björn-Egil Dahlberg
 %% Created: 2011-09-08
 
--module(pht).
+-module(hamt).
 
--compile([export_all]).
+-export([
+	new/0,
+	put/3,
+	get/2
+    ]).
+
+%% testing
+-export([
+	go/1
+    ]).
 
 -record(index, {
 	bitmask = 0,
 	array   = {}
     }).
--record( full, { array = {}}).
+
+-record(full, {
+	array = {}
+    }).
 
 %% defines
 
@@ -37,10 +49,10 @@
 -endif.
 
 
-%-define(ielement(Ix, T, V), insert_element(Ix, T, V)).
--define(ielement(Ix, T, V), erlang:insert_element(Ix, T, V)).
-%-define(bitpop(Ix,Bm,C), bitcount(Ix,Bm,C)).
--define(bitpop(Ix,Bm,_), erlang:bitcount( (Ix) band (Bm))).
+-define(ielement(Ix, T, V), insert_element(Ix, T, V)).
+%-define(ielement(Ix, T, V), erlang:insert_element(Ix, T, V)).
+-define(bitpop(Ix,Bm,C), bitcount(Ix,Bm,C)).
+%-define(bitpop(Ix,Bm,_), erlang:bitcount( (Ix) band (Bm))).
 			    
 %% #full{}  = full node
 %% #index{} = index node
@@ -48,10 +60,10 @@
 
 go(N) ->
     lists:foldl(fun(I, O) ->
-		O1 = pht:put(I, I, O),
-		[io:format("get ~w -> ~w~n", [Ix, pht:get(Ix, O1)]) || Ix <- lists:seq(1, I)],
-		O1
-	end, pht:new(), lists:seq(1,N)),
+	    O1 = ?MODULE:put(I, I, O),
+	    [io:format("get ~w -> ~w~n", [Ix, ?MODULE:get(Ix, O1)]) || Ix <- lists:seq(1, I)],
+	    O1
+	end, ?MODULE:new(), lists:seq(1,N)),
     ok.
 
 new() -> #index{ bitmask = 0, array = {} }.

@@ -1,10 +1,10 @@
 %% Copyright (C) 2011 Björn-Egil Dahlberg
 %%
-%% File:    ht.erl
+%% File:    htrie.erl
 %% Author:  Björn-Egil Dahlberg
 %% Created: 2011-08-31
 
--module(ht).
+-module(htrie).
 
 -export([
 	put/3,
