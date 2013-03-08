@@ -69,7 +69,7 @@ store(Key, Val, T) ->
     end.
 
 store_aux(Key, Val, empty) -> {up,empty,Key,Val,empty};	%"Up" node
-store_aux(Key, Val, {empty,K,V,empty}=Node) ->
+store_aux(Key, Val, {empty,K,V,empty}=_Node) ->
     %% Special case to avoid creating temporary "up" nodes.
     %% It flattens tree and helps a little bit, but not much.
     if Key < K ->
@@ -85,7 +85,7 @@ store_aux(Key, Val, {L,K,V,R}) ->
 	    store_up2_r(L, K, V, store_aux(Key, Val, R));
        true -> {L,Key,Val,R}			%Replace current value
     end;
-store_aux(Key, Val, {empty,Kl,Vl,_,Kr,Vr,_}=Node) ->
+store_aux(Key, Val, {empty,Kl,Vl,_,Kr,Vr,_}=_Node) ->
     if Key < Kl ->
 	    {empty,Key,Val,empty,Kl,Vl,empty,Kr,Vr,empty};
        Key > Kl ->
