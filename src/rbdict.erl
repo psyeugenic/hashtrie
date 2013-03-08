@@ -86,7 +86,7 @@
 
 new() -> empty.
 
--spec is_key(any(), rbdict()) -> bool().
+-spec is_key(any(), rbdict()) -> boolean().
 
 %% is_key(Key, Dict) -> true | false.
 
@@ -390,7 +390,7 @@ map(_, empty) -> empty;
 map(F, {RB,A,Xk,Xv,B}) ->
     {RB,map(F,A),Xk,F(Xk, Xv),map(F, B)}.
 
--spec filter(fun((any(), any()) -> bool()), rbdict()) -> rbdict().
+-spec filter(fun((any(), any()) -> boolean()), rbdict()) -> rbdict().
 
 %% filter(Fun, Dict) -> Dict.
 
@@ -429,9 +429,9 @@ foreach(F, {_,A,Xk,Xv,B}) ->
     F(Xk, Xv),
     foreach(F, B).
 
--spec all(fun((any(), any()) -> bool()), rbdict()) -> bool().
+-spec all(fun((any(), any()) -> boolean()), rbdict()) -> boolean().
 
-%% all(Pred, Dict) -> bool().
+%% all(Pred, Dict) -> boolean().
 
 all(Pred, Dict) when is_function(Pred, 2) -> all_aux(Pred, Dict).
 
@@ -450,9 +450,9 @@ all_aux(Pred, {_,A,Xk,Xv,B}) ->
 %% 	false -> false
 %%     end.
 
--spec any(fun((any(), any()) -> bool()), rbdict()) -> bool().
+-spec any(fun((any(), any()) -> boolean()), rbdict()) -> boolean().
 
-%% any(Pred, Dict) -> bool().
+%% any(Pred, Dict) -> boolean().
 
 any(Pred, Dict) when is_function(Pred, 2) -> any_aux(Pred, Dict).
 
