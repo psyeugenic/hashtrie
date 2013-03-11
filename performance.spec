@@ -18,10 +18,51 @@
 				{put, insert},
 				{new, empty}
 			    ]}
+		    ]},
+		{rbdict, [
+			{operations, [put,get]},
+			{translations, [
+				{put, store},
+				{get, fetch}
+			    ]}
+	
+		    ]},
+		{ttdict, [
+			{operations, [put,get]},
+			{translations, [
+				{put, store},
+				{get, fetch}
+			    ]}
+	
+		    ]},
+
+		{ttfdict, [
+			{operations, [put,get]},
+			{translations, [
+				{put, store},
+				{get, fetch}
+			    ]}
+	
+		    ]},
+		{aadict, [
+			{operations, [put,get]},
+			{translations, [
+				{put, store},
+				{get, fetch}
+			    ]}
+	
+		    ]},
+
+		{llrbdict, [
+			{operations, [put,get]},
+			{translations, [
+				{put, store},
+				{get, fetch}
+			    ]}
+	
 		    ]}
 	    ]}
     ]}.
-
 
 % {hamt_put,        "data/hamt_put.dat"},
 % {hamt_get,        "data/hamt_get.dat"},

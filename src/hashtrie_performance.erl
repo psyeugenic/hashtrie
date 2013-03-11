@@ -12,7 +12,8 @@
 -record(options, {
 	modules = [],
 	inputs = [],
-	iterations = 0
+	iterations = 0,
+	fds
     }).
 
 -export([
@@ -26,10 +27,12 @@
 
 %% benchmark
 
-execute(#options{ inputs = Is } = Opts) ->
+execute(#options{ inputs = Is } = Opts0) ->
+    Opts = open_files(Opts0),
     lists:map(fun(I) ->
 		benchmark(I, Opts)
-	end, Is).
+	end, Is),
+    close_files(Opts).
 
 benchmark(I, #options{ modules = Ms } = Opts) ->
     lists:map(fun({Mod, Data}) ->
@@ -48,7 +51,10 @@ map_operations(N, Mod, Operations, Opts, C0, [Op|Ops]) ->
 	    map_operations(N, Mod, Operations, Opts, C0, Ops);
 	Fun ->
 	    {Result, C1} = timeit(fun() -> Fun(N, C0, Fun) end, Opts),
-	    sout(N, Mod, translate_function(Mod, Op,Opts), Result),
+	    Translated = translate_function(Mod, Op,Opts),
+	    sout(N, Mod, Translated, Result),
+	    Fd = gb_trees:get({Mod, Op}, Opts#options.fds),
+	    pout(Fd, N, Result),
 	    [{Op, Result}|map_operations(N, Mod, Operations, Opts, C1, Ops)]
     end.
 
@@ -58,10 +64,14 @@ apply_with_translation(Mod, F, Args, Opts) ->
 translate_function(Mod, Function, #options{ modules = Mods }) ->
     Data  = proplists:get_value(Mod, Mods, []),
     Trans = proplists:get_value(translations, Data, []),
-    case proplists:get_value(Function, Trans) of
+    translate_function(Function, Trans).
+
+translate_function(Function, Translations) ->
+    case proplists:get_value(Function, Translations) of
 	undefined -> Function;
 	Translation -> Translation
     end.
+
 
 
 timeit(Fun, #options{ iterations = I}) ->
@@ -72,7 +82,7 @@ timeit(Fun, #options{ iterations = I}) ->
 			    {Time, Res} = timer:tc(Fun),
 			    {T0 + Time, Res}
 		    end, {0, 0}, Is),
-		Me ! {self(), result, {T / I, R}}
+		Me ! {self(), result, {T div I, R}}
 	end),
     receive 
 	{Pid, result, Res} -> 
@@ -85,7 +95,8 @@ timeit(Fun, #options{ iterations = I}) ->
 run(File) ->
     try
 	Options = parse_specification(File),
-	execute(Options)
+	execute(Options),
+	ok
     catch
 	Class:Reason ->
 	    print_stacktrace(standard_error, Class, Reason, erlang:get_stacktrace()),
@@ -112,10 +123,7 @@ setup_operations(Mod, Options) ->
     Operations0  = proplists:get_value(operations, Options, []),
     Translations = proplists:get_value(translations, Options, []),
     Operations   = lists:map(fun(Op) ->
-		case proplists:get_value(Op, Translations) of
-		    undefined -> {Op, setup_operation(Mod, Op, Op)};
-		    Trans -> {Op, setup_operation(Mod, Op, Trans)}
-		end
+		{Op, setup_operation(Mod, Op, translate_function(Op, Translations))}
 	end, Operations0),
     [
 	{operations, Operations},
@@ -149,13 +157,8 @@ sout(N, M, F, Value) ->
     io:format("[~10w] ~8s:~s~s  ~12w~n", [N,Mstr, Fstr, Bstr, Value]),
     ok.
 
-% sout(N, F, Value) ->
-%     Fstr = atom_to_list(F),
-%     Nf   = length(Fstr),
-%     Bstr = lists:duplicate(12 - Nf, $ ),
-%     io:format("[~10w]         :~s~s  ~12w~n", [N, Fstr, Bstr, Value]),
-%     ok.
- 
+pout(Fd, N, R) ->
+    io:format(Fd, "~10w \t~w~n", [N, R]).
 
 
 %% error handling
@@ -190,6 +193,22 @@ format_stacktrace(Class, Reason, StackTrace) ->
     S = lib:format_exception(1, Class, Reason, StackTrace, StackFun, FormatFun),
     lists:flatten(S).
     
+open_files(#options{ modules = Ms } = Opts) ->
+    Fds = lists:foldl(fun({M, Data}, T) ->
+		Ops = proplists:get_value(operations, Data),
+		open_files(M, Ops, T)
+	end, gb_trees:empty(), Ms),
+    Opts#options{ fds = Fds }.
+
+open_files(_M, [], T) -> T;
+open_files(M, [{Op,_}|Ops], T) ->
+    Filename = atom_to_list(M) ++ "_" ++ atom_to_list(Op) ++ ".dat",
+    {ok, Fd} = file:open(Filename, [write]),
+    open_files(M, Ops, gb_trees:enter({M, Op}, Fd, T)).
+
+close_files(#options{ fds = Fds }) ->
+    [ ok = file:close(Fd) || {_, Fd} <- gb_trees:to_list(Fds) ],
+    ok.
 
 
 
