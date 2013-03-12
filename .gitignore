@@ -1,3 +1,5 @@
-.*.swp
+.*.sw?
 ebin/*.beam
 erl_crash.dump
+hashtrie
+ebin
