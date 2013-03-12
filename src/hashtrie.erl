@@ -1,14 +1,20 @@
 %%
 %% Copyright (C) 2013 Björn-Egil Dahlberg
 %%
-%% File:    hp.erl
+%% File:    hashtrie.erl
 %% Author:  Björn-Egil Dahlberg
 %% Created: 2013-03-08
 %%
 
--module(hp).
+-module(hashtrie).
 
--compile([export_all]).
+-export([
+	main/1
+    ]).
 
-go() ->
-    hashtrie_performance:run("performance.spec").
+main([]) ->
+    io:format(standard_error, "hashtrie performance.spec [data-path]~n", []),
+    ok;
+
+main([File, Path]) -> hashtrie_performance:run(File, Path);
+main([File]) -> hashtrie_performance:run(File).

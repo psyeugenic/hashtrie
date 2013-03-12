@@ -13,11 +13,13 @@
 	modules = [],
 	inputs = [],
 	iterations = 0,
+	operations = [],
+	path,
 	fds
     }).
 
 -export([
-	run/1
+	run/1, run/2
     ]).
 
 -define(value(X), X).
@@ -53,8 +55,7 @@ map_operations(N, Mod, Operations, Opts, C0, [Op|Ops]) ->
 	    {Result, C1} = timeit(fun() -> Fun(N, C0, Fun) end, Opts),
 	    Translated = translate_function(Mod, Op,Opts),
 	    sout(N, Mod, Translated, Result),
-	    Fd = gb_trees:get({Mod, Op}, Opts#options.fds),
-	    pout(Fd, N, Result),
+	    pout(gb_trees:lookup({Mod, Op}, Opts#options.fds), N, Result),
 	    [{Op, Result}|map_operations(N, Mod, Operations, Opts, C1, Ops)]
     end.
 
@@ -92,10 +93,11 @@ timeit(Fun, #options{ iterations = I}) ->
 
 %% parse specification
 
-run(File) ->
+run(File) -> run(File, undefined).
+run(File, Path) ->
     try
 	Options = parse_specification(File),
-	execute(Options),
+	execute(Options#options{ path = Path }),
 	ok
     catch
 	Class:Reason ->
@@ -110,21 +112,24 @@ parse_specification(File) ->
     Mods    = proplists:get_value(modules, Spec, []),
     Os1     = lists:foldl(fun
 	    ({iterations, V}, Os) -> Os#options{ iterations = V };
-	    ({inputs,     V}, Os) -> Os#options{ inputs = V}
+	    ({inputs,     V}, Os) -> Os#options{ inputs = V};
+	    ({operations, V}, Os) -> Os#options{ operations = V};
+	    (Opt, Os) ->
+		io:format(standard_error, "Warning: option ~p not recognized in file ~p~n", [Opt, File]),
+		Os
 	end, #options{}, Options),
-    Os1#options{ modules = setup_modules(Mods) }.
+    Os1#options{ modules = setup_modules(Mods, Os1#options.operations) }.
 
 
-setup_modules([]) -> [];
-setup_modules([{Mod, Options}|Ms]) ->
-    [{Mod, setup_operations(Mod,Options)}|setup_modules(Ms)].
+setup_modules([], _) -> [];
+setup_modules([{Mod, Options}|Ms], Ops) ->
+    [{Mod, setup_operations(Mod, Ops, Options)}|setup_modules(Ms, Ops)].
 
-setup_operations(Mod, Options) ->
-    Operations0  = proplists:get_value(operations, Options, []),
+setup_operations(Mod, Ops, Options) ->
     Translations = proplists:get_value(translations, Options, []),
     Operations   = lists:map(fun(Op) ->
 		{Op, setup_operation(Mod, Op, translate_function(Op, Translations))}
-	end, Operations0),
+	end, Ops),
     [
 	{operations, Operations},
 	{translations, Translations}
@@ -157,7 +162,8 @@ sout(N, M, F, Value) ->
     io:format("[~10w] ~8s:~s~s  ~12w~n", [N,Mstr, Fstr, Bstr, Value]),
     ok.
 
-pout(Fd, N, R) ->
+pout(none, _N, _R) -> ok;
+pout({value, Fd}, N, R) ->
     io:format(Fd, "~10w \t~w~n", [N, R]).
 
 
@@ -193,18 +199,22 @@ format_stacktrace(Class, Reason, StackTrace) ->
     S = lib:format_exception(1, Class, Reason, StackTrace, StackFun, FormatFun),
     lists:flatten(S).
     
-open_files(#options{ modules = Ms } = Opts) ->
+open_files(#options{ path = undefined } =Opts) -> Opts#options{ fds = gb_trees:empty() };
+open_files(#options{ path = Path, modules = Ms } = Opts) ->
     Fds = lists:foldl(fun({M, Data}, T) ->
-		Ops = proplists:get_value(operations, Data),
-		open_files(M, Ops, T)
+		Ops   = proplists:get_value(operations, Data),
+		Trans = proplists:get_value(translations, Data),
+		open_files(M, Ops, Trans, Path, T)
 	end, gb_trees:empty(), Ms),
     Opts#options{ fds = Fds }.
 
-open_files(_M, [], T) -> T;
-open_files(M, [{Op,_}|Ops], T) ->
-    Filename = atom_to_list(M) ++ "_" ++ atom_to_list(Op) ++ ".dat",
-    {ok, Fd} = file:open(Filename, [write]),
-    open_files(M, Ops, gb_trees:enter({M, Op}, Fd, T)).
+open_files(_M, [], _, _, T) -> T;
+open_files(M, [{Op,_}|Ops], Trans, Path, T) ->
+    F    = translate_function(Op, Trans),
+    Dat  = atom_to_list(M) ++ "_" ++ atom_to_list(F) ++ ".dat",
+    File = filename:join([Path, Dat]),
+    {ok, Fd} = file:open(File, [write]),
+    open_files(M, Ops, Trans, Path, gb_trees:enter({M, Op}, Fd, T)).
 
 close_files(#options{ fds = Fds }) ->
     [ ok = file:close(Fd) || {_, Fd} <- gb_trees:to_list(Fds) ],

@@ -1,26 +1,22 @@
 
-
 {specification, [
 	{options, [
 		{iterations, 100},
+		{operations, [put, get]},
 		{inputs, [(1 bsl I) || I <- lists:seq(1,14)] }
 	    ]},
 
 
 	{modules, [
-		{hamt, [{operations, [put, get]}
-		    ]},
-		{htrie, [{operations, [put, get]}
-		    ]},
+		{hamt, []},
+		{htrie, []},
 		{gb_trees, [
-			{operations, [put, get]},
 			{translations, [
 				{put, insert},
 				{new, empty}
 			    ]}
 		    ]},
 		{rbdict, [
-			{operations, [put,get]},
 			{translations, [
 				{put, store},
 				{get, fetch}
@@ -28,7 +24,6 @@
 	
 		    ]},
 		{ttdict, [
-			{operations, [put,get]},
 			{translations, [
 				{put, store},
 				{get, fetch}
@@ -37,7 +32,6 @@
 		    ]},
 
 		{ttfdict, [
-			{operations, [put,get]},
 			{translations, [
 				{put, store},
 				{get, fetch}
@@ -45,7 +39,6 @@
 	
 		    ]},
 		{aadict, [
-			{operations, [put,get]},
 			{translations, [
 				{put, store},
 				{get, fetch}
@@ -54,7 +47,6 @@
 		    ]},
 
 		{llrbdict, [
-			{operations, [put,get]},
 			{translations, [
 				{put, store},
 				{get, fetch}
