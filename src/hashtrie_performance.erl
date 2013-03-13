@@ -44,9 +44,22 @@ benchmark(I, #options{ modules = Ms } = Opts) ->
 
 benchmark_operations(N, Mod, Operations, Opts) ->
     C0 = apply_with_translation(Mod, new, [], Opts),
-    map_operations(N, Mod, Operations, Opts, C0, [put, get, update]).
+    map_operations(N, Mod, Operations, Opts, C0, [put, get, update, memory]).
 
 map_operations(_, _, _, _, _, []) -> [];
+map_operations(N, Mod, Operations, Opts, C0, [memory|Ops]) ->
+    case proplists:get_value(put, Operations) of
+	undefined ->
+	    map_operations(N, Mod, Operations, Opts, C0, Ops);
+	Fun ->
+	    New = translate_function(Mod, new, Opts),
+	    T0 = Mod:New(),
+	    T1 = Fun(N, T0, Fun),
+	    Result = erts_debug:size(T1),
+	    sout(N, Mod, memory, Result),
+	    pout(gb_trees:lookup({Mod, memory}, Opts#options.fds), N, Result),
+	    [{memory, Result}|map_operations(N, Mod, Operations, Opts, C0, Ops)]
+    end;
 map_operations(N, Mod, Operations, Opts, C0, [Op|Ops]) ->
     case proplists:get_value(Op, Operations) of
 	undefined ->
@@ -131,10 +144,9 @@ setup_operations(Mod, Ops, Options) ->
 		{Op, setup_operation(Mod, Op, translate_function(Op, Translations))}
 	end, Ops),
     [
-	{operations, Operations},
+	{operations,   Operations},
 	{translations, Translations}
     ].
-
 
 setup_operation(M, get, Trans) ->
     fun
@@ -150,7 +162,12 @@ setup_operation(M, update, Trans) ->
     fun
 	(0, _, _) -> ok;
 	(I, T, F) -> F(I - 1, M:Trans(?key(I), fun(V) -> [V,V] end, T), F)
+    end;
+setup_operation(_M, memory, _Trans) ->
+    fun
+	(_, T, _) -> erts_debug:size(T)
     end.
+
 
 %% print operations
 
@@ -211,7 +228,7 @@ open_files(#options{ path = Path, modules = Ms } = Opts) ->
 open_files(_M, [], _, _, T) -> T;
 open_files(M, [{Op,_}|Ops], Trans, Path, T) ->
     F    = translate_function(Op, Trans),
-    Dat  = atom_to_list(M) ++ "_" ++ atom_to_list(F) ++ ".dat",
+    Dat  = atom_to_list(M) ++ "_" ++ atom_to_list(F) ++ "_" ++ atom_to_list(Op) ++ ".dat",
     File = filename:join([Path, Dat]),
     {ok, Fd} = file:open(File, [write]),
     open_files(M, Ops, Trans, Path, gb_trees:enter({M, Op}, Fd, T)).

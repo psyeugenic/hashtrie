@@ -1,15 +1,21 @@
 
 {specification, [
 	{options, [
-		{iterations, 100},
-		{operations, [put, get]},
-		{inputs, [(1 bsl I) || I <- lists:seq(1,14)] }
+		{iterations, 200},
+		{operations, [put, get, memory]},
+		{inputs, [(1 bsl I) || I <- lists:seq(3,14)] }
 	    ]},
 
 
 	{modules, [
 		{hamt, []},
 		{htrie, []},
+		{dict, [
+			{translations, [
+				{put, store},
+				{get, fetch}
+			    ]}
+		    ]},
 		{gb_trees, [
 			{translations, [
 				{put, insert},
@@ -21,7 +27,6 @@
 				{put, store},
 				{get, fetch}
 			    ]}
-	
 		    ]},
 		{ttdict, [
 			{translations, [
